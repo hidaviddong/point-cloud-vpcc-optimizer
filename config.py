@@ -1,0 +1,15 @@
+PC_ERROR_DIR = "YOUR_PC_ERROR_DIR" # pc_error 路径
+
+COMPRESS_DIR = "YOUR_COMPRESS_DIR" # compress  点云路径
+COMPRESS_BLOCK_DIR = "YOUR_COMPRESS_DIR" # compress 分块点云路径
+
+ORIGIN_DIR = "YOUR_ORIGIN_DIR" # origin 点云路径
+ORIGIN_BLOCK_DIR = "YOUR_ORIGIN_DIR" # origin 分块点云路径
+
+NEW_ORIGIN_DIR = "YOUR_NEW_ORIGIN_DIR" # new_origin 点云路径
+NEW_ORIGIN_BLOCK_DIR = "YOUR_NEW_ORIGIN_DIR" # new_origin 分块点云路径
+
+TRAIN_DATA_DIR = "YOUR_TRAIN_DATA_DIR" # 训练集点云路径
+TEST_DATA_DIR = "YOUR_TEST_DATA_DIR" # 测试集点云路径
+
+PREDICT_DIR = "YOUR_PREDICT_DIR" # predict 点云路径
