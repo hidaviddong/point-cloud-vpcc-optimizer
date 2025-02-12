@@ -1,3 +1,5 @@
 data/
+mpeg-pcc-dmetric-0.13.05/
 *.zip
 *.tar.gz
+__pycache__/
