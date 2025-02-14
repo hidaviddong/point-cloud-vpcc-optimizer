@@ -1,8 +1,11 @@
 import os
 import re
 import torch
-from config import COMPRESS_DIR, COMPRESS_BLOCK_DIR, ORIGIN_DIR, ORIGIN_BLOCK_DIR
-from utils import load_ply, save_ply, get_file_pairs
+import time
+import subprocess
+import numpy as np
+from config import COMPRESS_DIR, COMPRESS_BLOCK_DIR, ORIGIN_DIR, ORIGIN_BLOCK_DIR, PC_ERROR_DIR, NEW_ORIGIN_BLOCK_DIR
+from utils import load_ply, save_ply, get_file_pairs, extract_points, get_matching_paths
 
 def chunk_point_cloud_fixed_size(points, block_size=100, cube_size=1024, overlap=1, device='cuda'):
     """将点云数据切分为固定大小的块"""
@@ -77,8 +80,63 @@ def process_all_point_clouds(block_size=160, cube_size=1024):
     for file_A, file_B in file_pairs:
         process_point_cloud_pair(file_A, file_B, block_size, cube_size)
 
-def main():
-    process_all_point_clouds(block_size=160, cube_size=1024)
+def process_point_clouds(origin_dir, compress_dir, save_dir, pc_error_path):
+    """处理点云配对和保存
+    
+    Args:
+        origin_dir: 原始点云块目录
+        compress_dir: 压缩点云块目录
+        save_dir: 保存结果的目录
+        pc_error_path: pc_error可执行文件路径
+    """
+    for file_a in os.listdir(compress_dir):
+        try:
+            reconstructed_path, uncompressed_path = get_matching_paths(file_a, origin_dir, compress_dir)
+            print(f"Matching: {uncompressed_path} <-> {reconstructed_path}")
+            command = [
+                pc_error_path,
+                f"--fileA={reconstructed_path}",
+                f"--fileB={uncompressed_path}",
+                "--resolution=1023",
+                "--color=0",
+                "--dropdups=0",
+                "--singlePass=1"
+            ]
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            point_pairs = extract_points(result.stdout)
+            
+            if not point_pairs:
+                continue
 
+            max_index = max(point_pairs.keys())
+            points_a = np.zeros((max_index + 1, 3))
+            points_b = np.zeros((max_index + 1, 3))
+
+            for i, (point_a, point_b) in point_pairs.items():
+                points_a[i] = point_a
+                points_b[i] = point_b
+                print(f"Point pair: {point_a} <-> {point_b}")
+
+            save_ply(points_b, os.path.join(save_dir, file_a))
+            print(f"Saved new_origin file {file_a} successfully")
+
+        except FileNotFoundError as e:
+            print(f"Matching error: {e}")
+        except subprocess.CalledProcessError as e:
+            print(f"Processing error for {file_a}: {e.stderr}")
+        except Exception as e:
+            print(f"Unexpected error processing {file_a}: {str(e)}")
+
+def main():
+    # process_all_point_clouds(block_size=160, cube_size=1024)
+
+    process_point_clouds(
+        origin_dir=ORIGIN_BLOCK_DIR,
+        compress_dir=COMPRESS_BLOCK_DIR,
+        save_dir=NEW_ORIGIN_BLOCK_DIR,
+        pc_error_path=PC_ERROR_DIR
+    )
+
+    
 if __name__ == '__main__':
     main()
