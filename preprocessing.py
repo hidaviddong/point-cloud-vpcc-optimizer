@@ -4,7 +4,7 @@ import torch
 import time
 import subprocess
 import numpy as np
-from config import COMPRESS_DIR, COMPRESS_BLOCK_DIR, ORIGIN_DIR, ORIGIN_BLOCK_DIR, PC_ERROR_DIR, NEW_ORIGIN_BLOCK_DIR
+from config import COMPRESS_DIR, COMPRESS_BLOCK_DIR, ORIGIN_DIR, ORIGIN_BLOCK_DIR, PC_ERROR_DIR, NEW_ORIGIN_BLOCK_DIR, NEW_ORIGIN_ATOB_BLOCK_DIR
 from utils import load_ply, save_ply, get_file_pairs, extract_points, get_matching_paths
 
 def chunk_point_cloud_fixed_size(points, block_size=100, cube_size=1024, overlap=1, device='cuda'):
@@ -80,7 +80,7 @@ def process_all_point_clouds(block_size=160, cube_size=1024):
     for file_A, file_B in file_pairs:
         process_point_cloud_pair(file_A, file_B, block_size, cube_size)
 
-def process_point_clouds(origin_dir, compress_dir, save_dir, pc_error_path):
+def process_point_clouds(origin_dir, compress_dir, save_dir, pc_error_path,isAtoB=False):
     """处理点云配对和保存
     
     Args:
@@ -88,18 +88,22 @@ def process_point_clouds(origin_dir, compress_dir, save_dir, pc_error_path):
         compress_dir: 压缩点云块目录
         save_dir: 保存结果的目录
         pc_error_path: pc_error可执行文件路径
+        isAtoB: 是否是AtoB
     """
     for file_a in os.listdir(compress_dir):
         try:
             reconstructed_path, uncompressed_path = get_matching_paths(file_a, origin_dir, compress_dir)
             print(f"Matching: {uncompressed_path} <-> {reconstructed_path}")
+            fileA = uncompressed_path if isAtoB else reconstructed_path
+            fileB = reconstructed_path if isAtoB else uncompressed_path
+            dropdups = 1 if isAtoB else 0
             command = [
                 pc_error_path,
-                f"--fileA={reconstructed_path}",
-                f"--fileB={uncompressed_path}",
+                f"--fileA={fileA}",
+                f"--fileB={fileB}",
                 "--resolution=1023",
                 "--color=0",
-                "--dropdups=0",
+                f"--dropdups={dropdups}",
                 "--singlePass=1"
             ]
             result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
@@ -130,12 +134,21 @@ def process_point_clouds(origin_dir, compress_dir, save_dir, pc_error_path):
 def main():
     # process_all_point_clouds(block_size=160, cube_size=1024)
 
-    process_point_clouds(
+    # process_point_clouds(
+    #     origin_dir=ORIGIN_BLOCK_DIR,
+    #     compress_dir=COMPRESS_BLOCK_DIR,
+    #     save_dir=NEW_ORIGIN_BLOCK_DIR,
+    #     pc_error_path=PC_ERROR_DIR
+    # )
+
+        process_point_clouds(
         origin_dir=ORIGIN_BLOCK_DIR,
         compress_dir=COMPRESS_BLOCK_DIR,
-        save_dir=NEW_ORIGIN_BLOCK_DIR,
-        pc_error_path=PC_ERROR_DIR
+        save_dir=NEW_ORIGIN_ATOB_BLOCK_DIR,
+        pc_error_path=PC_ERROR_DIR,
+        isAtoB=True
     )
+
 
     
 if __name__ == '__main__':
